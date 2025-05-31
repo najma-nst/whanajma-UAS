@@ -1,8 +1,40 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:whazlansaja/screen/pesan_screen.dart';
+import 'package:flutter/services.dart';
+import 'pesan_screen.dart';
+import 'package:intl/intl.dart';
 
-class BerandaScreen extends StatelessWidget {
+class BerandaScreen extends StatefulWidget {
   const BerandaScreen({super.key});
+
+  @override
+  State<BerandaScreen> createState() => _BerandaScreenState();
+}
+
+class _BerandaScreenState extends State<BerandaScreen> {
+  List dosenList = [];
+
+  Future<void> loadData() async {
+    final String jsonString = await rootBundle
+        .loadString('assets/json_data_chat_dosen/dosen_chat.json');
+    final List<dynamic> jsonData = json.decode(jsonString);
+    setState(() {
+      dosenList = jsonData;
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    loadData();
+  }
+
+  String formatTime(String? iso) {
+    if (iso == null) return '';
+    final time = DateTime.tryParse(iso);
+    if (time == null) return '';
+    return DateFormat.Hm().format(time);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -10,14 +42,11 @@ class BerandaScreen extends StatelessWidget {
       appBar: AppBar(
         elevation: 2,
         title: const Text(
-          'WhAzlansaja',
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-          ),
+          'WhNajmaNst',
+          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
         ),
         actions: [
-          IconButton(onPressed: () {}, icon: const Icon(Icons.camera_enhance)),
+          IconButton(onPressed: () {}, icon: const Icon(Icons.camera_alt)),
           IconButton(onPressed: () {}, icon: const Icon(Icons.more_vert)),
         ],
         bottom: PreferredSize(
@@ -29,11 +58,7 @@ class BerandaScreen extends StatelessWidget {
               barHintText: 'Cari dosen dan mulai chat',
               suggestionsBuilder: (context, controller) {
                 return <Widget>[
-                  const Center(
-                    child: Text(
-                      'Belum ada pencarian',
-                    ),
-                  ),
+                  const Center(child: Text('Belum ada pencarian'))
                 ];
               },
             ),
@@ -41,20 +66,36 @@ class BerandaScreen extends StatelessWidget {
         ),
       ),
       body: ListView.builder(
-        itemCount: 40,
+        itemCount: dosenList.length,
         itemBuilder: (context, index) {
+          final dosen = dosenList[index];
+          final nama = dosen['name'];
+          final gambar = dosen['img'];
+          final List details = dosen['details'] ?? [];
+          final lastChat =
+              details.isNotEmpty ? details.last['message'] : 'Belum ada chat';
+          final lastTime =
+              details.isNotEmpty ? formatTime(details.last['time']) : '';
+
           return ListTile(
-            onTap: () {
-              Navigator.push(context,
-                  MaterialPageRoute(builder: (context) => const PesanScreen()));
+            leading: CircleAvatar(backgroundImage: AssetImage(gambar)),
+            title: Text(nama),
+            subtitle:
+                Text(lastChat, maxLines: 1, overflow: TextOverflow.ellipsis),
+            trailing: Text(lastTime),
+            onTap: () async {
+              final updated = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => PesanScreen(dosenData: dosen),
+                ),
+              );
+              if (updated != null) {
+                setState(() {
+                  dosenList[index] = updated;
+                });
+              }
             },
-            leading: const CircleAvatar(
-              backgroundImage:
-                  AssetImage('assets/gambar_dosen/Azlan, S.Kom., M.Kom.jpg'),
-            ),
-            title: const Text('Azlan'),
-            subtitle: const Text('Belum ada chat'),
-            trailing: const Text('Kemaren'),
           );
         },
       ),
@@ -65,22 +106,10 @@ class BerandaScreen extends StatelessWidget {
       bottomNavigationBar: NavigationBar(
         selectedIndex: 0,
         destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.chat),
-            label: 'Chat',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.sync),
-            label: 'Pembaruan',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.groups),
-            label: 'Komunitas',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.call),
-            label: 'Panggilan',
-          ),
+          NavigationDestination(icon: Icon(Icons.chat), label: 'Chat'),
+          NavigationDestination(icon: Icon(Icons.sync), label: 'Pembaruan'),
+          NavigationDestination(icon: Icon(Icons.groups), label: 'Komunitas'),
+          NavigationDestination(icon: Icon(Icons.call), label: 'Panggilan'),
         ],
       ),
     );
